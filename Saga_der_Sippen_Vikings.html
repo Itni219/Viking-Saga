@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Saga of the Sippen — A Viking Migration Simulation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.11.0/dist/tabler-icons.min.css">
+<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+<style>
+:root{
+  --parchment:#efe6d3;--parchment2:rgba(239,230,211,0.96);--parchment3:#e2d5b8;
+  --ink:#2a2118;--ink2:#6b5c47;--ink3:#a0917a;
+  --bronze:#b5793a;--bronze2:#8f5d29;--bronze-pale:rgba(181,121,58,0.14);
+  --ember:#a3402f;--ember-pale:#f7e2dd;
+  --teal:#3e7d73;--teal-pale:#e1efec;
+  --gold:#c99a2e;--gold-pale:#f8f0d9;
+  --border:rgba(42,33,24,0.16);--border2:rgba(42,33,24,0.34);
+  --sh:0 2px 14px rgba(10,6,2,0.28);--sh2:0 10px 34px rgba(10,6,2,0.4);
+  --r:10px;--rm:16px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:'Crimson Text',Georgia,serif;color:var(--parchment);min-height:100vh;-webkit-font-smoothing:antialiased;
+  background:linear-gradient(180deg,#0a1119 0%,#101c28 40%,#182c39 70%,#1f3a3f 100%);}
+#root{position:relative;z-index:1;min-height:100vh}
+.scene{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none}
+.scene svg{width:100%;height:100%;display:block}
+.mtn-far{fill:#152230;opacity:.85}
+.mtn-near{fill:#0e1620;opacity:.95}
+.water{fill:#0c262b}
+.wave{fill:none;stroke:rgba(239,230,211,0.07);stroke-width:2}
+.wave.w2{stroke:rgba(239,230,211,0.045)}
+.star{fill:#eee2c4;animation:twinkle 4.5s ease-in-out infinite}
+.star.s2{animation-delay:1.1s}.star.s3{animation-delay:2.2s}.star.s4{animation-delay:3.1s}.star.s5{animation-delay:.6s}.star.s6{animation-delay:2.7s}
+.moon{fill:#efe6d3;opacity:.85}
+.moonglow{fill:#efe6d3;opacity:.05}
+.ship{animation:drift 30s ease-in-out infinite alternate}
+.ship .hull{fill:#0a0f14}
+.ship .prow{fill:#0a0f14}
+.ship .mast{stroke:#0a0f14;stroke-width:3}
+.ship .sail{fill:#d8cca8;opacity:.88}
+@keyframes twinkle{0%,100%{opacity:.2}50%{opacity:.85}}
+@keyframes drift{0%{transform:translate(-36px,2px)}50%{transform:translate(28px,-8px)}100%{transform:translate(-6px,4px)}}
+@media(prefers-reduced-motion:reduce){.ship,.star{animation:none}}
+
+button{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 22px;border:1px solid var(--border2);
+  border-radius:var(--r);background:rgba(239,230,211,0.92);cursor:pointer;font-size:15px;font-family:'Crimson Text',Georgia,serif;
+  color:var(--ink);line-height:1.4;transition:all .12s;font-weight:600}
+button:hover:not(:disabled){background:rgba(239,230,211,1);transform:translateY(-1px)}
+button:active:not(:disabled){transform:scale(.98)}
+button:disabled{opacity:.35;cursor:not-allowed}
+button.pri{background:var(--bronze);color:#fff;border-color:var(--bronze2)}
+button.pri:hover:not(:disabled){background:var(--bronze2)}
+button.ghost{background:transparent;border-color:transparent;color:var(--parchment);opacity:.7;font-weight:500}
+button.ghost:hover:not(:disabled){opacity:1;background:rgba(239,230,211,0.08)}
+input[type=text]{display:block;width:100%;padding:12px 15px;border:1px solid var(--border2);border-radius:var(--r);
+  font-size:16px;font-family:'Crimson Text',Georgia,serif;color:var(--ink);background:rgba(239,230,211,0.96);outline:none}
+input[type=password]{display:block;width:100%;padding:12px 15px;border:1px solid var(--border2);border-radius:var(--r);
+  font-size:16px;color:var(--ink);background:rgba(239,230,211,0.96);outline:none;font-family:inherit}
+.disp{font-family:'Cinzel',serif}
+.muted{color:var(--ink2)}
+.card{background:var(--parchment2);border:1px solid var(--border);border-radius:var(--rm);padding:1.35rem 1.6rem;box-shadow:var(--sh)}
+.panel{background:rgba(239,230,211,0.9);border:1px solid var(--border);border-radius:var(--rm);padding:1.1rem 1.4rem}
+.rune{text-align:center;font-size:20px;letter-spacing:10px;color:var(--bronze);opacity:.55;margin:22px 0}
+.eyebrow{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--bronze);font-weight:700}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.opt{border:1.5px solid var(--border2);border-radius:var(--rm);padding:15px 18px;cursor:pointer;background:rgba(239,230,211,0.95);
+  transition:border-color .12s,background .12s,box-shadow .12s}
+.opt:hover{border-color:var(--bronze);box-shadow:var(--sh)}
+.opt.correct{border:2.5px solid var(--teal);background:var(--teal-pale)}
+.opt.wrong{border:2.5px solid var(--ember);background:var(--ember-pale)}
+.opt.locked{cursor:default}
+.opt.sel{border:2.5px solid var(--bronze);background:var(--bronze-pale)}
+.stat-pill{display:flex;align-items:center;gap:8px;background:rgba(239,230,211,0.9);border:1px solid var(--border);
+  border-radius:100px;padding:7px 15px 7px 11px}
+.stat-pill i{font-size:16px}
+.stat-fame i{color:var(--ember)} .stat-wealth i{color:var(--gold)} .stat-land i{color:var(--teal)} .stat-knowledge i{color:var(--bronze)}
+.hud{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:22px}
+.prog-track{height:6px;background:rgba(239,230,211,0.18);border-radius:3px;overflow:hidden;margin-bottom:22px}
+.prog-fill{height:100%;background:linear-gradient(90deg,var(--bronze),var(--gold));border-radius:3px;transition:width .4s}
+.banner{background:linear-gradient(135deg,#7c5023 0%,#5c3a1a 100%);color:#f7efe0;border-radius:var(--rm);padding:30px 34px;
+  margin-bottom:26px;position:relative;overflow:hidden;border:1px solid rgba(0,0,0,.25)}
+.banner-num{position:absolute;right:22px;top:50%;transform:translateY(-50%);font-size:120px;font-weight:700;opacity:.14;line-height:1;font-family:'Cinzel',serif}
+.reveal{border-radius:var(--rm);overflow:hidden;box-shadow:var(--sh2)}
+.reveal-pos{border-left:6px solid var(--teal)} .reveal-neg{border-left:6px solid var(--ember)} .reveal-event{border-left:6px solid var(--bronze)}
+.reveal-h{padding:16px 20px}
+.reveal-h-pos{background:var(--teal-pale)} .reveal-h-neg{background:var(--ember-pale)} .reveal-h-event{background:var(--gold-pale)}
+.reveal-body{background:rgba(239,230,211,0.97);padding:22px 20px}
+.delta-box{background:rgba(42,33,24,0.05);border-radius:var(--r);padding:12px 16px;margin-top:14px;display:flex;gap:18px;flex-wrap:wrap}
+.lbr{display:flex;justify-content:space-between;align-items:center;padding:15px 18px;margin-bottom:9px;border:1px solid var(--border);
+  border-radius:var(--r);background:rgba(239,230,211,0.94)}
+.lbr.me{border:2px solid var(--bronze);background:var(--bronze-pale)}
+.err{background:var(--ember-pale);border:1px solid var(--ember);border-radius:var(--r);padding:14px 18px;font-size:14px;color:var(--ember);margin-bottom:22px}
+.ldot{width:8px;height:8px;border-radius:50%;background:var(--teal);display:inline-block;margin-right:7px;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.swatch{width:30px;height:30px;border-radius:50%;border:2px solid rgba(0,0,0,.2);cursor:pointer;flex-shrink:0}
+.swatch.on{border:3px solid var(--parchment);box-shadow:0 0 0 2px var(--bronze)}
+@media(max-width:700px){.g3{grid-template-columns:1fr}.g4{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<div class="scene" aria-hidden="true">
+<svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMax slice" xmlns="http://www.w3.org/2000/svg">
+  <circle class="moonglow" cx="1310" cy="140" r="140"/>
+  <circle class="moon" cx="1310" cy="140" r="46"/>
+  <g class="stars">
+    <circle class="star s1" cx="120" cy="90" r="2"/>
+    <circle class="star s2" cx="300" cy="60" r="1.6"/>
+    <circle class="star s3" cx="460" cy="130" r="2.2"/>
+    <circle class="star s4" cx="620" cy="70" r="1.4"/>
+    <circle class="star s5" cx="950" cy="100" r="2"/>
+    <circle class="star s6" cx="1120" cy="60" r="1.6"/>
+    <circle class="star s1" cx="200" cy="180" r="1.4"/>
+    <circle class="star s3" cx="820" cy="150" r="1.8"/>
+    <circle class="star s5" cx="1480" cy="90" r="1.6"/>
+  </g>
+  <polygon class="mtn-far" points="0,900 0,560 180,480 360,540 520,440 700,530 900,420 1080,520 1260,450 1440,530 1600,470 1600,900"/>
+  <polygon class="mtn-near" points="0,900 0,660 220,600 460,650 700,580 950,650 1200,590 1400,650 1600,610 1600,900"/>
+  <rect class="water" x="0" y="760" width="1600" height="140"/>
+  <path class="wave w1" d="M0,780 Q100,772 200,780 T400,780 T600,780 T800,780 T1000,780 T1200,780 T1400,780 T1600,780"/>
+  <path class="wave w2" d="M0,812 Q100,804 200,812 T400,812 T600,812 T800,812 T1000,812 T1200,812 T1400,812 T1600,812"/>
+  <g class="ship">
+    <path class="hull" d="M755,745 Q840,772 925,745 L908,754 Q840,766 772,754 Z"/>
+    <path class="prow" d="M920,747 C934,741 937,725 928,714 C930,729 923,740 913,748 Z"/>
+    <line class="mast" x1="840" y1="745" x2="840" y2="652"/>
+    <polygon class="sail" points="840,658 888,700 840,700"/>
+    <polygon class="sail" points="840,655 850,660 840,665"/>
+  </g>
+</svg>
+</div>
+<div id="root"></div>
+<script>
+/* ═══════════════════ SETUP ═══════════════════
+   Reuses the same Firebase realtime-database project as NovaBite, under a
+   separate path ("vikings/scores") so the two tools never collide.
+   If your Firebase security rules restrict writes to specific paths, add a
+   rule for "vikings" alongside the existing "novabite" one, e.g.:
+     { "rules": { "novabite": {".read":true,".write":true},
+                  "vikings": {".read":true,".write":true} } }
+   Change TEACHER_PASS below to whatever passcode you want for the dashboard. */
+const FIREBASE_CONFIG={
+  apiKey: "AIzaSyAd2Njwidish7HyF6SkVzX9Ln9Q9PWVrD0",
+  authDomain: "novabites-simulation.firebaseapp.com",
+  databaseURL: "https://novabites-simulation-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "novabites-simulation",
+  storageBucket: "novabites-simulation.firebasestorage.app",
+  messagingSenderId: "743318577518",
+  appId: "1:743318577518:web:638f3dcd72100b5333617f"
+};
+/* ════════════════════════════════════════════════ */
+const TEACHER_PASS="VIKING2026",DB_PATH="vikings/scores";
+let db=null;
+function configured(){return!FIREBASE_CONFIG.apiKey.startsWith("PASTE");}
+if(configured()){try{firebase.initializeApp(FIREBASE_CONFIG);db=firebase.database();}catch(e){console.error(e);}}
+async function writeScore(n,color,round,stats,d){
+  if(!db)return;
+  const key=n.trim().replace(/[.#$[\]/]/g,"_");
+  const total=stats.fame+stats.wealth+stats.land+stats.knowledge;
+  try{
+    await Promise.race([
+      db.ref(DB_PATH+"/"+key).set({name:n,color:color||"#b5793a",round,fame:stats.fame,wealth:stats.wealth,land:stats.land,knowledge:stats.knowledge,total,done:d,ts:Date.now()}),
+      new Promise((_,r)=>setTimeout(()=>r(new Error("timeout")),5000))
+    ]);
+  }catch(e){console.warn("Score save skipped:",e.message);}
+}
+async function fetchScores(){if(!db)return[];const s=await db.ref(DB_PATH).get();return s.exists()?Object.values(s.val()).filter(v=>v&&v.name):[];}
+async function clearScores(){if(db)await db.ref(DB_PATH).remove();}
+
+const COLORS=["#b5793a","#a3402f","#3e7d73","#6b5c9e","#c99a2e","#4a6b8a"];
+
+/* ── ROUND CONTENT ── */
+const ROUNDS=[
+{key:"raid",num:1,icon:"ti-swords",title:"Raid",theme:"Fire on the Coast",
+ story:"Spring winds fill the sails. Longships slip out of the fjord toward foreign shores. Glory and plunder await \u2014 for clans bold enough to take them.",
+ facts:[
+  "8 June 793: the raid on the monastery of Lindisfarne (Northumbria, England) conventionally marks the start of the Viking Age in Western Europe.",
+  "Longships had a shallow draft and were clinker-built \u2014 they could cross open sea AND sail far up rivers, enabling surprise inland attacks.",
+  "Monasteries were popular targets: full of gold and silver, and undefended.",
+  "Raids later reached as far as Paris (845) and even the Mediterranean/Seville.",
+  "Raiding was often seasonal \u2014 crews went \u201ea-viking\u201c in summer and returned home; a 2020 Nature DNA study found close family members took part together in some raiding parties."
+ ],
+ quiz:[
+  {q:"In which year was the famous raid on Lindisfarne?",options:["793","843","911","1066"],correct:0,stat:"fame"},
+  {q:"Why were monasteries such popular raid targets?",options:["They had strong armies to defeat","They stored valuable goods and had no defenses","They were located far inland only","They paid raiders in advance to be left alone"],correct:1,stat:"fame"},
+  {q:"What ship design feature let Vikings raid far inland?",options:["Their enormous size","Their shallow draft/hull","Iron armour plating","A steam-powered engine"],correct:1,stat:"wealth"},
+  {q:"A 2020 Nature DNA study found that early raiding parties sometimes included:",options:["Only unrelated young warriors","Entire villages, including the elderly","Close family members","Only enslaved rowers"],correct:2,stat:"wealth"}
+ ],
+ dilemma:{title:"Entscheidungsdilemma",scenario:"Your ships spot an undefended monastery on the coast. What does your clan do?",
+  options:[
+   {label:"A",name:"Raid it quickly and sail home with silver.",hint:"Fast, profitable, low risk \u2014 but it's just a hit-and-run.",fame:1,wealth:2,land:0},
+   {label:"B",name:"Leave a few warriors behind to hold the land.",hint:"Risky and unglorious now \u2014 but it plants a first foothold.",fame:-1,wealth:0,land:1}
+  ]}
+},
+{key:"trade",num:2,icon:"ti-anchor",title:"Trade",theme:"Silver Roads",
+ story:"Not every voyage ends in fire. Down the great rivers, your clan's ships carry furs and amber toward markets richer than any monastery.",
+ event:{icon:"ti-bell",title:"News from the homestead",body:"Back in Scandinavia, the harvest was good this year. Whatever your clan decides abroad, your kin at home are not going hungry \u2014 for now."},
+ facts:[
+  "Rus\u2019 Vikings (mostly of Swedish origin) travelled the Volga and Dnieper river systems, linking the Baltic Sea to the Caspian and Black Seas.",
+  "They traded furs, amber, walrus ivory and enslaved people for silver dirham coins from the Islamic world (e.g. the Abbasid Caliphate, Baghdad) and luxury goods from Byzantium (Constantinople).",
+  "Key trading hubs: Birka (Sweden), Hedeby (Denmark), Kyiv and Novgorod (expanded by Rus\u2019 Vikings), Dublin, York/Jorvik.",
+  "Thousands of Arabic silver coins found buried in Scandinavia are hard evidence of this long-distance network.",
+  "Important nuance: the trade network included enslaved people \u2014 a reminder that \u201cwealth\u201d could mean human beings, not just goods."
+ ],
+ quiz:[
+  {q:"Which two river systems did Rus\u2019 Vikings use to reach the Caspian/Black Seas?",options:["Rhine \u0026 Danube","Volga \u0026 Dnieper","Thames \u0026 Seine","Nile \u0026 Euphrates"],correct:1,stat:"wealth"},
+  {q:"What did Vikings receive from Islamic traders in exchange for furs \u0026 enslaved people?",options:["Gold jewellery only","Silver dirham coins","Spices only","Land grants"],correct:1,stat:"wealth"},
+  {q:"Which Rus\u2019-founded/expanded trading hub is now a major Ukrainian city?",options:["Birka","Hedeby","Kyiv","Dublin"],correct:2,stat:"fame"},
+  {q:"What uncomfortable part of Viking trade is often left out of popular stories?",options:["Fishing rights disputes","The slave trade","Textile tariffs","Currency exchange fees"],correct:1,stat:"fame"}
+ ],
+ dilemma:{title:"Entscheidungsdilemma",scenario:"You reach a Byzantine trading post. What does your clan do?",
+  options:[
+   {label:"A",name:"Trade peacefully for silk and silver.",hint:"Slower profit, but the relationship lasts.",fame:1,wealth:2,land:0},
+   {label:"B",name:"Demand a one-time tribute under threat of force.",hint:"More silver right now \u2014 but you can never come back.",fame:-2,wealth:3,land:0}
+  ]}
+},
+{key:"settle",num:3,icon:"ti-map-pin",title:"Settle",theme:"New Shores",
+ story:"Some clans never go home. Empty, fertile land lies beyond the horizon \u2014 but word of your earlier deeds abroad has already arrived before you.",
+ facts:[
+  "Iceland was settled from around 874 AD onward (Ing\u00f3lfur Arnarson traditionally the first settler); the Landn\u00e1mab\u00f3k (\u201eBook of Settlements\u201c) records this process.",
+  "In England, decades of Viking invasion and settlement led to the Danelaw \u2013 an agreed area of Norse-ruled territory, following negotiations with the Anglo-Saxon King Alfred the Great in the late 9th century.",
+  "In 911, the Frankish king Charles the Simple granted land around the Seine to the Norse leader Rollo (Treaty of Saint-Clair-sur-Epte) in exchange for loyalty \u2013 this became the Duchy of Normandy. Rollo\u2019s descendant, William the Conqueror, later conquered England in 1066.",
+  "Around 1000 AD, Leif Erikson\u2019s expedition reached North America; L\u2019Anse aux Meadows (Newfoundland, Canada) is the only confirmed Norse settlement site there \u2013 but it was abandoned after only a few years.",
+  "Real push factors drove settlement: limited farmland in Norway (fjord geography, inheritance customs); pull factors included empty, fertile land in Iceland and valuable territory abroad."
+ ],
+ quiz:[
+  {q:"What was the Danelaw?",options:["A Viking trading company","An area of England under Norse law","A type of Viking ship","A Norse legal code for enslaved people"],correct:1,stat:"land"},
+  {q:"In 911, which Frankish king granted land to Rollo, creating Normandy?",options:["Charles the Simple","Alfred the Great","Charlemagne","William the Conqueror"],correct:0,stat:"land"},
+  {q:"Where is the only confirmed Norse settlement site in North America?",options:["Vinland, Massachusetts","L\u2019Anse aux Meadows, Newfoundland","Reykjavik, Iceland","Jorvik, England"],correct:1,stat:"fame"},
+  {q:"Name one key \u201cpush factor\u201d that encouraged Norwegian Vikings to settle elsewhere.",options:["A warm climate at home","Limited farmland due to geography and inheritance rules","Overpopulated cities","Religious persecution"],correct:1,stat:"fame"}
+ ],
+ dilemma:{title:"Entscheidungsdilemma",scenario:"You\u2019ve found fertile, empty land far from home. What does your clan do?",
+  options:[
+   {label:"A",name:"Bring your whole family and build a permanent farm.",hint:"This is a true, lasting home.",fame:1,wealth:0,land:3},
+   {label:"B",name:"Just build a fort to control the area \u2014 keep your main home in Scandinavia.",hint:"Flexible \u2014 but is it really settling?",fame:0,wealth:0,land:1}
+  ]}
+},
+{key:"society",num:4,icon:"ti-gavel",title:"Society",theme:"Law and Legend",
+ story:"Ships, silver and soil mean little without order. How your clan governs itself \u2014 and how it is remembered \u2014 is decided in the hall, not on the waves.",
+ facts:[
+  "The \u201cThing\u201d was an assembly where free men made laws and settled disputes; Iceland\u2019s Althing, founded around 930 AD, is often cited as one of the world\u2019s oldest parliamentary institutions.",
+  "Viking women had comparatively significant rights for their time \u2013 they could own property, request divorce, and manage the farm while husbands travelled \u2013 though society was not \u201cequal\u201c by modern standards, and enslaved people (thralls) had no such rights.",
+  "Key gods: Odin (wisdom, war, death), Thor (thunder, protector of ordinary people), Freyja (love, fertility, also war/death). Valhalla was imagined as a hall for warriors chosen by Odin after death in battle.",
+  "Runes (Younger Futhark) were mainly used for short inscriptions \u2013 memorial stones (e.g. the Jelling stones, Denmark), ownership marks \u2013 not for long literature.",
+  "The famous sagas were actually written down in Iceland in the 13th century (e.g. by Snorri Sturluson) \u2013 centuries after the events they describe."
+ ],
+ quiz:[
+  {q:"What was the \u201cThing\u201d?",options:["A Viking weapon","A legal/political assembly of free men","A type of ship","A religious festival"],correct:1,stat:"fame"},
+  {q:"Compared to many contemporary societies, Viking women could:",options:["Not own any property","Vote in national elections","Own property and request divorce","Only become warriors"],correct:2,stat:"fame"},
+  {q:"What were runes mainly used for?",options:["Writing long sagas and novels","Short inscriptions like memorial stones","Government tax records","Trade contracts with Byzantium"],correct:1,stat:"land"},
+  {q:"When were the famous Icelandic sagas actually written down?",options:["During the events themselves (8th century)","Centuries later, in the 13th century","In the 20th century","They were never written down"],correct:1,stat:"land"}
+ ],
+ dilemma:{title:"Entscheidungsdilemma",scenario:"A dispute breaks out between two families in your settlement. What does your clan do?",
+  options:[
+   {label:"A",name:"Call a Thing assembly to resolve it by law.",hint:"Slower, but it builds lasting order.",fame:2,wealth:0,land:1},
+   {label:"B",name:"Let the strongest warrior settle it by force.",hint:"Quick \u2014 but feuds like this rarely end well.",fame:1,wealth:0,land:-1}
+  ]}
+}
+];
+
+/* ── CONSEQUENCE CARDS: an early dilemma choice returns later, like NovaBite's CQ system ── */
+const CQ=[
+ {trigRound:2,cond:{round:0,opt:"A"},type:"neg",icon:"ti-history",ref:"Round 1 \u00b7 Raid",
+  title:"Your name precedes you",
+  body:"Word of your clan\u2019s raids has reached these shores before you. Local farmers watch your ships with fear, not welcome \u2014 trust here must be earned the hard way.",
+  fame:0,wealth:0,land:-1},
+ {trigRound:2,cond:{round:0,opt:"B"},type:"pos",icon:"ti-history",ref:"Round 1 \u00b7 Raid",
+  title:"A foothold remembered",
+  body:"The warriors you left behind on your first voyage built more than a camp \u2014 they built a reputation as neighbours, not raiders. Your clan\u2019s name opens doors here.",
+  fame:0,wealth:0,land:2},
+ {trigRound:3,cond:{round:1,opt:"A"},type:"pos",icon:"ti-history",ref:"Round 2 \u00b7 Trade",
+  title:"Merchants speak your name kindly",
+  body:"In every hall from here to home, traders tell of a clan that deals fairly. That kind of reputation opens doors no sword ever could.",
+  fame:2,wealth:0,land:0},
+ {trigRound:3,cond:{round:1,opt:"B"},type:"neg",icon:"ti-history",ref:"Round 2 \u00b7 Trade",
+  title:"Word of the tribute has travelled",
+  body:"Other clans have heard how you dealt with the Byzantines. At the next Thing, your voice carries less weight than it should.",
+  fame:-1,wealth:0,land:0}
+];
+function matchCQ(round,history){return CQ.filter(c=>c.trigRound===round&&history.some(h=>h.round===c.cond.round&&h.opt===c.cond.opt));}
+
+function legacyTitle(s){
+  const arr=[["Raiders","ti-flame",s.fame],["Merchants","ti-coins",s.wealth],["Settlers","ti-map",s.land]];
+  arr.sort((a,b)=>b[2]-a[2]);
+  if(arr[0][2]-arr[1][2]<2)return["Restless Wanderers","ti-compass","Your clan never settled into one clear path \u2014 raider, trader and settler all at once. A fitting puzzle for the migration debate."];
+  const[label,icon]=arr[0];
+  const blurb={Raiders:"Fame and daring defined your saga \u2014 but daring alone rarely builds a lasting home.",
+    Merchants:"Silver and steady deals defined your saga \u2014 some of your kind put down roots in the towns you traded with.",
+    Settlers:"Land and permanence defined your saga \u2014 of all the paths, yours matches the migration definition most closely."}[label];
+  return[label,icon,blurb];
+}
+function fmtDelta(n){return(n>0?"+":"")+n;}
+
+const {useState,useEffect,useRef,useCallback}=React;const R=React.createElement;
+function App(){
+  const[screen,setScreen]=useState("start"); // start | roundIntro | event | consequence | facts | quiz | dilemma | roundEnd | final | lb | teacher
+  const[group,setGroup]=useState("");const[inp,setInp]=useState("");const[color,setColor]=useState(COLORS[0]);
+  const[roundIdx,setRoundIdx]=useState(0);const[quizIdx,setQuizIdx]=useState(0);
+  const[stats,setStats]=useState({fame:0,wealth:0,land:0,knowledge:0});
+  const[history,setHistory]=useState([]); // [{round,opt}]
+  const[roundGain,setRoundGain]=useState({fame:0,wealth:0,land:0,knowledge:0});
+  const[selQuiz,setSelQuiz]=useState(null);const[quizAnswered,setQuizAnswered]=useState(false);
+  const[dilemmaChoice,setDilemmaChoice]=useState(null);
+  const[cqQueue,setCqQueue]=useState([]);
+  const[lb,setLb]=useState([]);const[tpw,setTpw]=useState("");const[tauth,setTauth]=useState(false);const[lbLoad,setLbLoad]=useState(false);
+  const cleanRef=useRef(null);const lockRef=useRef(false);
+  const round=ROUNDS[roundIdx];const total=stats.fame+stats.wealth+stats.land+stats.knowledge;
+
+  useEffect(()=>{if(screen==="teacher"&&tauth&&db){const ref=db.ref(DB_PATH);const h=snap=>{const v=snap.exists()?Object.values(snap.val()).filter(v=>v&&v.name):[];setLb(v.sort((a,b)=>b.total-a.total));};ref.on("value",h);cleanRef.current=()=>ref.off("value",h);return()=>{if(cleanRef.current)cleanRef.current();};}},[screen,tauth]);
+  const loadLb=useCallback(async()=>{setLbLoad(true);try{const d=await fetchScores();setLb(d.sort((a,b)=>b.total-a.total));}catch{}setLbLoad(false);},[]);
+  useEffect(()=>{if(screen==="lb")loadLb();},[screen,loadLb]);
+
+  const startGame=async()=>{
+    const g=inp.trim();if(!g)return;setGroup(g);setRoundIdx(0);setQuizIdx(0);
+    setStats({fame:0,wealth:0,land:0,knowledge:0});setHistory([]);setSelQuiz(null);setQuizAnswered(false);setDilemmaChoice(null);
+    try{await writeScore(g,color,0,{fame:0,wealth:0,land:0,knowledge:0},false);}catch{}
+    enterRound(0);
+  };
+
+  function enterRound(idx){
+    const cq=matchCQ(idx,history);
+    setRoundGain({fame:0,wealth:0,land:0,knowledge:0});
+    if(cq.length>0){setCqQueue(cq);setScreen("consequence");}
+    else if(ROUNDS[idx].event){setScreen("event");}
+    else{setScreen("roundIntro");}
+  }
+  const dismissConsequence=()=>{
+    const c=cqQueue[0];
+    if(c){
+      setStats(s=>({fame:s.fame+(c.fame||0),wealth:s.wealth+(c.wealth||0),land:s.land+(c.land||0),knowledge:s.knowledge}));
+      setRoundGain(g=>({...g,fame:g.fame+(c.fame||0),wealth:g.wealth+(c.wealth||0),land:g.land+(c.land||0)}));
+    }
+    const rem=cqQueue.slice(1);setCqQueue(rem);
+    if(rem.length===0){ROUNDS[roundIdx].event?setScreen("event"):setScreen("roundIntro");}
+  };
+
+  const pickQuiz=(idx)=>{
+    if(quizAnswered)return;
+    setSelQuiz(idx);setQuizAnswered(true);
+    const q=round.quiz[quizIdx];
+    if(idx===q.correct){setStats(s=>({...s,[q.stat]:s[q.stat]+1,knowledge:s.knowledge+1}));setRoundGain(g=>({...g,[q.stat]:g[q.stat]+1,knowledge:g.knowledge+1}));}
+  };
+  const nextQuiz=()=>{
+    setSelQuiz(null);setQuizAnswered(false);
+    if(quizIdx<round.quiz.length-1){setQuizIdx(quizIdx+1);}
+    else{setQuizIdx(0);setScreen("dilemma");}
+  };
+
+  const pickDilemma=(opt)=>{
+    if(dilemmaChoice)return;
+    setDilemmaChoice(opt.label);
+    setStats(s=>({...s,fame:s.fame+opt.fame,wealth:s.wealth+opt.wealth,land:s.land+opt.land}));
+    setRoundGain(g=>({...g,fame:g.fame+opt.fame,wealth:g.wealth+opt.wealth,land:g.land+opt.land}));
+    setHistory(h=>[...h,{round:roundIdx,opt:opt.label}]);
+  };
+  const finishRound=async()=>{
+    const isLast=roundIdx===ROUNDS.length-1;
+    setDilemmaChoice(null);
+    if(isLast){
+      await writeScore(group,color,ROUNDS.length,stats,true);
+      setScreen("final");
+    }else{
+      await writeScore(group,color,roundIdx+1,stats,false);
+      const nIdx=roundIdx+1;setRoundIdx(nIdx);setQuizIdx(0);enterRound(nIdx);
+    }
+  };
+
+  const W={maxWidth:860,margin:"0 auto",padding:"2.4rem 1.6rem 4rem"};
+  const Rune=()=>R("div",{className:"rune"},"\u1403\u16be\u16a1\u16be\u16a4\u16a1\u16be");
+  const StatHud=({show})=>R("div",{className:"hud"},
+    (show||["fame","wealth","land"]).length&&[
+      ["fame","ti-flame","Fame",stats.fame],["wealth","ti-coins","Wealth",stats.wealth],
+      ["land","ti-map","Land",stats.land],["knowledge","ti-books","Knowledge",stats.knowledge]
+    ].map(([k,icon,label,val])=>R("div",{key:k,className:"stat-pill stat-"+k},R("i",{className:"ti "+icon}),
+      R("span",{style:{fontWeight:700,fontSize:15}},val),R("span",{style:{fontSize:12,color:"var(--ink2)"}},label)))
+  );
+  const TopBar=()=>R("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18,fontSize:13}},
+    R("div",{style:{display:"flex",alignItems:"center",gap:10}},
+      R("div",{style:{width:12,height:12,borderRadius:"50%",background:color}}),
+      R("span",{className:"disp",style:{fontWeight:600,letterSpacing:".03em"}},group)),
+    R("span",{style:{opacity:.75}},"Round ",roundIdx+1," / ",ROUNDS.length)
+  );
+
+  /* ── START ── */
+  if(screen==="start")return R("div",{style:W},
+    !configured()&&R("div",{className:"err"},R("b",null,"Firebase not configured.")," Paste your config into FIREBASE_CONFIG at the top of this file."),
+    R("div",{style:{textAlign:"center",marginBottom:8}},R("i",{className:"ti ti-anchor",style:{fontSize:38,color:"var(--bronze)"}})),
+    R("div",{className:"eyebrow",style:{textAlign:"center",marginBottom:8}},"A Live Clan Simulation"),
+    R("div",{className:"disp",style:{fontSize:36,fontWeight:700,textAlign:"center",marginBottom:6}},"Saga of the Sippen"),
+    R("div",{style:{textAlign:"center",color:"var(--parchment)",opacity:.8,marginBottom:6}},"Raid \u00b7 Trade \u00b7 Settle \u00b7 Society \u00b7 4 rounds"),
+    Rune(),
+    R("div",{className:"card",style:{marginBottom:22}},
+      R("div",{style:{fontSize:13,color:"var(--ink2)",marginBottom:10}},R("i",{className:"ti ti-bulb",style:{marginRight:7}}),
+        "Every choice your clan makes \u2014 in the raid, at the trading post, on new land, at the Thing \u2014 shapes three sagas: ",
+        R("b",null,"Fame, Wealth and Land"),". Some choices from early rounds return later as consequences. At the end, your clan\u2019s profile becomes part of the class debate: ",
+        R("i",null,"were the Vikings migrants?")),
+      R("div",{className:"g3"},["Fame","Wealth","Land"].map((l,i)=>R("div",{key:l},
+        R("i",{className:"ti "+["ti-flame","ti-coins","ti-map"][i],style:{fontSize:20,color:["var(--ember)","var(--gold)","var(--teal)"][i]}}),
+        R("div",{style:{fontSize:13,fontWeight:600,marginTop:4}},l))))
+    ),
+    R("div",{style:{marginBottom:10,fontSize:13,fontWeight:600}},"Your clan\u2019s name"),
+    R("input",{type:"text",placeholder:"e.g. Ravens of the North",value:inp,onChange:e=>setInp(e.target.value),onKeyDown:e=>e.key==="Enter"&&startGame(),style:{marginBottom:16}}),
+    R("div",{style:{marginBottom:10,fontSize:13,fontWeight:600}},"Banner colour"),
+    R("div",{style:{display:"flex",gap:10,marginBottom:22}},COLORS.map(c=>R("div",{key:c,className:"swatch"+(color===c?" on":""),style:{background:c},onClick:()=>setColor(c)}))),
+    R("button",{onClick:startGame,disabled:!inp.trim()||!configured(),className:"pri",style:{width:"100%",fontSize:16,padding:"14px 22px",marginBottom:10}},"Set sail \u2014 Round 1  \u2192"),
+    R("button",{onClick:()=>setScreen("teacher"),className:"ghost",style:{width:"100%",fontSize:14}},R("i",{className:"ti ti-lock",style:{marginRight:7}}),"Teacher dashboard")
+  );
+
+  /* ── EVENT (flavour, no stats) ── */
+  if(screen==="event"){const e=round.event;return R("div",{style:{...W,maxWidth:700}},TopBar(),
+    R("div",{className:"reveal reveal-event"},
+      R("div",{className:"reveal-h reveal-h-event"},R("i",{className:"ti "+e.icon,style:{fontSize:20,color:"var(--bronze)",marginRight:8}}),
+        R("span",{style:{fontSize:12,fontWeight:700,letterSpacing:".08em",color:"var(--bronze2)"}},"SAGA EVENT \u2014 affects every clan equally")),
+      R("div",{className:"reveal-body"},R("div",{className:"disp",style:{fontSize:20,fontWeight:700,marginBottom:10}},e.title),
+        R("div",{style:{fontSize:15,color:"var(--ink2)",lineHeight:1.75}},e.body))
+    ),
+    R("button",{onClick:()=>setScreen("roundIntro"),className:"pri",style:{width:"100%",marginTop:20,fontSize:16,padding:"13px"}},"Continue  \u2192")
+  );}
+
+  /* ── CONSEQUENCE ── */
+  if(screen==="consequence"&&cqQueue.length>0){
+    const c=cqQueue[0];const cls=c.type==="pos"?"pos":"neg";
+    const deltas=[["fame","Fame",c.fame],["wealth","Wealth",c.wealth],["land","Land",c.land]].filter(d=>d[2]);
+    return R("div",{style:{...W,maxWidth:700}},TopBar(),
+      R("div",{style:{fontSize:13,color:"var(--parchment)",opacity:.8,marginBottom:16}},R("i",{className:"ti ti-history",style:{marginRight:7}}),
+        "Consequence of a past decision",cqQueue.length>1&&R("span",{style:{marginLeft:8,background:"rgba(239,230,211,0.15)",borderRadius:100,padding:"2px 10px",fontSize:12}},cqQueue.length+" in queue")),
+      R("div",{className:"reveal reveal-"+cls},
+        R("div",{className:"reveal-h reveal-h-"+cls},R("i",{className:"ti "+c.icon,style:{fontSize:20,color:cls==="pos"?"var(--teal)":"var(--ember)",marginRight:8}}),
+          R("div",{style:{fontSize:13,color:"var(--ink2)"}},"Based on: ",R("b",null,c.ref))),
+        R("div",{className:"reveal-body"},R("div",{className:"disp",style:{fontSize:20,fontWeight:700,marginBottom:10}},c.title),
+          R("div",{style:{fontSize:15,color:"var(--ink2)",lineHeight:1.75}},c.body),
+          deltas.length>0&&R("div",{className:"delta-box"},deltas.map(([k,l,v])=>R("div",{key:k,style:{fontSize:22,fontWeight:700,color:v>0?"var(--teal)":"var(--ember)"}},l+" "+fmtDelta(v))))
+        )
+      ),
+      R("button",{onClick:dismissConsequence,className:"pri",style:{width:"100%",marginTop:20,fontSize:16,padding:"13px"}},cqQueue.length>1?"Next  \u2192":"Continue  \u2192")
+    );
+  }
+
+  /* ── ROUND INTRO ── */
+  if(screen==="roundIntro")return R("div",{style:{...W,maxWidth:760}},TopBar(),
+    R("div",{className:"banner"},R("div",{className:"banner-num disp"},round.num),
+      R("div",{style:{fontSize:12,textTransform:"uppercase",letterSpacing:".1em",opacity:.8,marginBottom:8}},"Round ",round.num," \u00b7 ",round.theme),
+      R("div",{className:"disp",style:{fontSize:28,fontWeight:700,display:"flex",alignItems:"center",gap:12}},R("i",{className:"ti "+round.icon,style:{fontSize:26}}),round.title)),
+    R("div",{style:{fontSize:16,color:"var(--parchment)",opacity:.9,lineHeight:1.85,marginBottom:26}},round.story),
+    StatHud({}),
+    R("button",{onClick:()=>setScreen("facts"),className:"pri",style:{width:"100%",fontSize:16,padding:"13px"}},"Learn what your clan knows  \u2192")
+  );
+
+  /* ── FACTS ── */
+  if(screen==="facts")return R("div",{style:{...W,maxWidth:760}},TopBar(),
+    R("div",{className:"eyebrow",style:{marginBottom:10}},"Round ",round.num," \u00b7 ",round.title),
+    R("div",{className:"card"},round.facts.map((f,i)=>R("div",{key:i,style:{display:"flex",gap:12,marginBottom:i<round.facts.length-1?14:0}},
+      R("i",{className:"ti ti-point-filled",style:{fontSize:10,color:"var(--bronze)",marginTop:8,flexShrink:0}}),
+      R("div",{style:{fontSize:15,color:"var(--ink)",lineHeight:1.7}},f)))),
+    R("button",{onClick:()=>setScreen("quiz"),className:"pri",style:{width:"100%",marginTop:22,fontSize:16,padding:"13px"}},"Begin the quiz  \u2192")
+  );
+
+  /* ── QUIZ ── */
+  if(screen==="quiz"){
+    const q=round.quiz[quizIdx];
+    return R("div",{style:{...W,maxWidth:760}},TopBar(),
+      R("div",{className:"prog-track"},R("div",{className:"prog-fill",style:{width:((quizIdx)/round.quiz.length*100)+"%"}})),
+      R("div",{style:{fontSize:13,color:"var(--parchment)",opacity:.75,marginBottom:10}},"Question ",quizIdx+1," / ",round.quiz.length),
+      R("div",{className:"disp",style:{fontSize:21,fontWeight:700,marginBottom:18,color:"var(--parchment)"}},q.q),
+      R("div",{style:{display:"flex",flexDirection:"column",gap:12,marginBottom:20}},q.options.map((opt,i)=>{
+        let cls="opt";
+        if(quizAnswered){
+          if(i===q.correct)cls+=" correct";else if(i===selQuiz)cls+=" wrong";
+          cls+=" locked";
+        }
+        return R("div",{key:i,className:cls,onClick:()=>pickQuiz(i)},
+          R("div",{style:{display:"flex",gap:14,alignItems:"center"}},
+            R("div",{style:{minWidth:30,height:30,borderRadius:8,background:"rgba(42,33,24,0.08)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,color:"var(--ink2)"}},String.fromCharCode(65+i)),
+            R("div",{style:{fontSize:15,color:"var(--ink)"}},opt),
+            quizAnswered&&i===q.correct&&R("i",{className:"ti ti-check",style:{marginLeft:"auto",color:"var(--teal)",fontSize:18}}),
+            quizAnswered&&i===selQuiz&&i!==q.correct&&R("i",{className:"ti ti-x",style:{marginLeft:"auto",color:"var(--ember)",fontSize:18}})
+          ));
+      })),
+      quizAnswered&&R("div",{style:{marginBottom:16,fontSize:14,color:"var(--parchment)",opacity:.85}},
+        selQuiz===q.correct?R("span",null,R("i",{className:"ti ti-check",style:{color:"var(--teal)",marginRight:6}}),"Correct! +1 ",q.stat," and +1 knowledge."):
+        R("span",null,R("i",{className:"ti ti-x",style:{color:"var(--ember)",marginRight:6}},"Not quite \u2014 no points this time."))),
+      R("button",{onClick:nextQuiz,disabled:!quizAnswered,className:"pri",style:{width:"100%",fontSize:16,padding:"13px"}},
+        quizIdx<round.quiz.length-1?"Next question  \u2192":"On to the dilemma  \u2192")
+    );
+  }
+
+  /* ── DILEMMA ── */
+  if(screen==="dilemma"){
+    const d=round.dilemma;
+    return R("div",{style:{...W,maxWidth:760}},TopBar(),
+      R("div",{className:"eyebrow",style:{marginBottom:8}},"\u2694\ufe0f  Entscheidungsdilemma"),
+      R("div",{className:"disp",style:{fontSize:21,fontWeight:700,marginBottom:18,color:"var(--parchment)"}},d.scenario),
+      R("div",{style:{display:"flex",flexDirection:"column",gap:14,marginBottom:20}},d.options.map(opt=>{
+        const isChosen=dilemmaChoice===opt.label;const isLocked=!!dilemmaChoice;
+        return R("div",{key:opt.label,className:"opt"+(isChosen?" sel":"")+(isLocked?" locked":""),onClick:()=>pickDilemma(opt)},
+          R("div",{style:{display:"flex",gap:14,alignItems:"flex-start"}},
+            R("div",{style:{minWidth:32,height:32,borderRadius:9,background:isChosen?"var(--bronze)":"rgba(42,33,24,0.08)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,color:isChosen?"#fff":"var(--ink2)",flexShrink:0}},opt.label),
+            R("div",{style:{flex:1}},
+              R("div",{style:{fontSize:16,fontWeight:600,marginBottom:5,color:"var(--ink)"}},opt.name),
+              R("div",{style:{fontSize:13,color:"var(--ink2)",fontStyle:"italic",marginBottom:isChosen?10:0}},opt.hint),
+              isChosen&&R("div",{style:{display:"flex",gap:14,flexWrap:"wrap",fontSize:13}},
+                [["Fame",opt.fame,"var(--ember)"],["Wealth",opt.wealth,"var(--gold)"],["Land",opt.land,"var(--teal)"]].filter(x=>x[1]).map(([l,v,c])=>
+                  R("span",{key:l,style:{fontWeight:700,color:c}},l+" "+fmtDelta(v)))
+              )
+            )
+          ));
+      })),
+      R("button",{onClick:finishRound,disabled:!dilemmaChoice,className:"pri",style:{width:"100%",fontSize:16,padding:"13px"}},
+        roundIdx===ROUNDS.length-1?"See your Saga  \u2192":"Confirm \u2014 end round  \u2192")
+    );
+  }
+
+  /* ── FINAL ── */
+  if(screen==="final"){
+    const[label,icon,blurb]=legacyTitle(stats);
+    return R("div",{style:{...W,textAlign:"center",maxWidth:760}},
+      R("div",{style:{fontSize:14,color:"var(--parchment)",opacity:.8,marginBottom:4}},group),
+      R("div",{className:"disp",style:{fontSize:30,fontWeight:700,marginBottom:6}},"The Saga is Told"),
+      R("div",{style:{fontSize:14,color:"var(--parchment)",opacity:.75,marginBottom:30}},"Four rounds complete"),
+      R("div",{className:"card",style:{marginBottom:22}},
+        R("div",{style:{fontSize:12,color:"var(--ink2)",marginBottom:10}},"Your clan will be remembered as"),
+        R("div",{style:{display:"inline-flex",alignItems:"center",gap:10,padding:"10px 24px",borderRadius:100,background:"var(--bronze-pale)"}},
+          R("i",{className:"ti "+icon,style:{fontSize:20,color:"var(--bronze)"}}),R("span",{className:"disp",style:{fontSize:20,fontWeight:700,color:"var(--ink)"}},"The "+label)),
+        R("div",{style:{fontSize:14,color:"var(--ink2)",marginTop:14,lineHeight:1.7}},blurb)
+      ),
+      R("div",{className:"g4",style:{marginBottom:26}},[["Fame","ti-flame",stats.fame,"var(--ember)"],["Wealth","ti-coins",stats.wealth,"var(--gold)"],["Land","ti-map",stats.land,"var(--teal)"],["Knowledge","ti-books",stats.knowledge,"var(--bronze)"]].map(([l,i,v,c])=>
+        R("div",{key:l,className:"card",style:{textAlign:"center"}},R("i",{className:"ti "+i,style:{fontSize:20,color:c}}),R("div",{style:{fontSize:24,fontWeight:700,marginTop:6,color:"var(--ink)"}},v),R("div",{style:{fontSize:12,color:"var(--ink2)"}},l))
+      )),
+      R("div",{style:{fontSize:13,color:"var(--parchment)",opacity:.75,marginBottom:18,fontStyle:"italic"}},"Bring this profile to the class debate: were the Vikings migrants?"),
+      R("button",{onClick:()=>setScreen("lb"),className:"pri",style:{width:"100%",fontSize:16,padding:"13px"}},"View the leaderboard  \u2192")
+    );
+  }
+
+  /* ── LEADERBOARD ── */
+  if(screen==="lb"){const sorted=[...lb].sort((a,b)=>b.total-a.total);return R("div",{style:W},
+    R("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}},
+      R("div",{className:"disp",style:{fontSize:26,fontWeight:700}},"Leaderboard"),
+      R("button",{onClick:loadLb,style:{fontSize:13}},R("i",{className:"ti ti-refresh",style:{marginRight:6}}),"Refresh")),
+    R("div",{style:{fontSize:14,color:"var(--parchment)",opacity:.8,marginBottom:24}},sorted.length," clan",sorted.length!==1?"s":""," \u00b7 sorted by total saga points"),
+    lbLoad&&R("div",{style:{color:"var(--parchment)",opacity:.7,fontSize:14,marginBottom:16}},"Loading..."),
+    sorted.length===0&&!lbLoad&&R("div",{style:{color:"var(--parchment)",opacity:.7,fontSize:15}},"No clans yet."),
+    sorted.map((e,i)=>R("div",{key:e.name,className:"lbr"+(e.name===group?" me":"")},
+      R("div",{style:{display:"flex",gap:16,alignItems:"center"}},
+        R("div",{style:{fontSize:20,fontWeight:700,color:"var(--ink3)",width:30,textAlign:"center"}},i+1),
+        R("div",{style:{width:10,height:10,borderRadius:"50%",background:e.color||"var(--bronze)"}}),
+        R("div",null,R("div",{style:{fontSize:16,fontWeight:600,color:"var(--ink)"}},e.name),
+          R("div",{style:{fontSize:12,color:"var(--ink2)"}},e.done?"Saga complete":"Round "+e.round+" / "+ROUNDS.length))),
+      R("div",{style:{fontSize:20,fontWeight:700,color:"var(--bronze2)"}},e.total))),
+    R("button",{onClick:()=>setScreen("start"),className:"ghost",style:{marginTop:18,width:"100%",fontSize:14}},"New saga")
+  );}
+
+  /* ── TEACHER ── */
+  if(screen==="teacher"){
+    if(!tauth)return R("div",{style:{maxWidth:380,margin:"0 auto",padding:"4rem 2rem",textAlign:"center"}},
+      R("div",{style:{width:56,height:56,borderRadius:14,background:"rgba(239,230,211,0.9)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 18px"}},R("i",{className:"ti ti-lock",style:{fontSize:26,color:"var(--ink2)"}})),
+      R("div",{className:"disp",style:{fontSize:20,fontWeight:700,marginBottom:26,color:"var(--parchment)"}},"Teacher dashboard"),
+      R("input",{type:"password",placeholder:"Passcode",value:tpw,onChange:e=>setTpw(e.target.value),onKeyDown:e=>{if(e.key==="Enter"&&tpw===TEACHER_PASS)setTauth(true);},style:{marginBottom:12}}),
+      R("button",{onClick:()=>{if(tpw===TEACHER_PASS)setTauth(true);},className:"pri",style:{width:"100%",fontSize:15,padding:"12px",marginBottom:10}},"Access dashboard"),
+      R("button",{onClick:()=>setScreen("start"),className:"ghost",style:{width:"100%",fontSize:14}},"Back"));
+    const sorted=[...lb].sort((a,b)=>b.total-a.total);
+    return R("div",{style:{maxWidth:1000,margin:"0 auto",padding:"2.2rem 2rem"}},
+      R("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}},
+        R("div",{className:"disp",style:{fontSize:22,fontWeight:700}},"Teacher dashboard"),
+        R("button",{onClick:async()=>{if(window.confirm("Reset all clans? This cannot be undone.")){await clearScores();setLb([]);}},style:{fontSize:13,color:"var(--ember)"}},R("i",{className:"ti ti-trash",style:{marginRight:6}}),"Reset all")),
+      R("div",{style:{display:"flex",alignItems:"center",marginBottom:26,fontSize:13,color:"var(--parchment)",opacity:.8}},R("span",{className:"ldot"}),"Live \u00b7 real-time \u00b7 ",sorted.length," clan",sorted.length!==1?"s":""," registered"),
+      sorted.length===0&&R("div",{style:{color:"var(--parchment)",opacity:.7,fontSize:15,marginBottom:18}},"No clans have started yet."),
+      R("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:14,marginBottom:28}},sorted.map((e,i)=>R("div",{key:e.name,className:"card"},
+        R("div",{style:{display:"flex",justifyContent:"space-between",marginBottom:10}},R("div",{style:{fontSize:12,color:"var(--ink2)"}},"#",i+1),R("div",{style:{fontSize:12,color:e.done?"var(--teal)":"var(--ink2)"}},e.done?"Complete":"Round "+e.round+"/"+ROUNDS.length)),
+        R("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:10}},R("div",{style:{width:10,height:10,borderRadius:"50%",background:e.color||"var(--bronze)"}}),R("div",{style:{fontSize:15,fontWeight:600,wordBreak:"break-word"}},e.name)),
+        R("div",{style:{fontSize:24,fontWeight:700,color:"var(--bronze2)",marginBottom:8}},e.total),
+        R("div",{style:{display:"flex",gap:10,fontSize:12,color:"var(--ink2)"}},R("span",null,"F ",e.fame),R("span",null,"W ",e.wealth),R("span",null,"L ",e.land),R("span",null,"K ",e.knowledge))
+      ))),
+      R("button",{onClick:()=>{setTauth(false);setTpw("");setScreen("start");},className:"ghost",style:{fontSize:14}},"Exit")
+    );
+  }
+  return null;
+}
+ReactDOM.createRoot(document.getElementById("root")).render(R(App));
+</script>
+</body>
+</html>

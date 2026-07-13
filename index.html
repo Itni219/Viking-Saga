@@ -451,7 +451,7 @@ function App(){
       ["fame","ti-flame","Fame",stats.fame],["wealth","ti-coins","Wealth",stats.wealth],
       ["land","ti-map","Land",stats.land],["knowledge","ti-books","Knowledge",stats.knowledge]
     ].map(([k,icon,label,val])=>R("div",{key:k,className:"stat-pill stat-"+k},R("i",{className:"ti "+icon}),
-      R("span",{style:{fontWeight:700,fontSize:19}},val),R("span",{style:{fontSize:15,color:"var(--ink2)"}},label)))
+      R("span",{style:{fontWeight:700,fontSize:19,color:"var(--ink)"}},val),R("span",{style:{fontSize:15,color:"var(--ink2)"}},label)))
   );
   const TopBar=()=>R("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:22,fontSize:16}},
     R("div",{style:{display:"flex",alignItems:"center",gap:10}},
@@ -475,7 +475,7 @@ function App(){
         R("i",null,"were the Vikings migrants?")),
       R("div",{className:"g3"},["Fame","Wealth","Land"].map((l,i)=>R("div",{key:l},
         R("i",{className:"ti "+["ti-flame","ti-coins","ti-map"][i],style:{fontSize:26,color:["var(--ember)","var(--gold)","var(--teal)"][i]}}),
-        R("div",{style:{fontSize:16,fontWeight:600,marginTop:6}},l))))
+        R("div",{style:{fontSize:16,fontWeight:600,marginTop:6,color:"var(--ink)"}},l))))
     ),
     R("div",{style:{marginBottom:12,fontSize:16,fontWeight:600}},"Your clan\u2019s name"),
     R("input",{type:"text",placeholder:"e.g. Ravens of the North",value:inp,onChange:e=>setInp(e.target.value),onKeyDown:e=>e.key==="Enter"&&startGame(),style:{marginBottom:20}}),
@@ -649,7 +649,7 @@ function App(){
       sorted.length===0&&R("div",{style:{color:"var(--parchment)",opacity:.7,fontSize:18,marginBottom:20}},"No clans have started yet."),
       R("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(230px,1fr))",gap:16,marginBottom:32}},sorted.map((e,i)=>R("div",{key:e.name,className:"card"},
         R("div",{style:{display:"flex",justifyContent:"space-between",marginBottom:12}},R("div",{style:{fontSize:14,color:"var(--ink2)"}},"#",i+1),R("div",{style:{fontSize:14,color:e.done?"var(--teal)":"var(--ink2)"}},e.done?"Complete":"Round "+e.round+"/"+ROUNDS.length)),
-        R("div",{style:{display:"flex",alignItems:"center",gap:9,marginBottom:12}},R("div",{style:{width:12,height:12,borderRadius:"50%",background:e.color||"var(--bronze)"}}),R("div",{style:{fontSize:18,fontWeight:600,wordBreak:"break-word"}},e.name)),
+        R("div",{style:{display:"flex",alignItems:"center",gap:9,marginBottom:12}},R("div",{style:{width:12,height:12,borderRadius:"50%",background:e.color||"var(--bronze)",flexShrink:0}}),R("div",{style:{fontSize:18,fontWeight:600,wordBreak:"break-word",color:"var(--ink)"}},e.name)),
         R("div",{style:{fontSize:28,fontWeight:700,color:"var(--bronze2)",marginBottom:10}},e.total),
         R("div",{style:{display:"flex",gap:12,fontSize:14,color:"var(--ink2)"}},R("span",null,"F ",e.fame),R("span",null,"W ",e.wealth),R("span",null,"L ",e.land),R("span",null,"K ",e.knowledge))
       ))),
